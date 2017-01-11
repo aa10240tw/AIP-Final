@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<?php
+		header("Content-Type:text/html; charset=utf-8");
+	?>
+	<title>AIP40247008S-Final</title>
+	<style>
+		body{
+			margin:0;
+			padding:0;
+			background-color: #FCFCEC;
+		}
+		nav{
+			margin:1%;
+			height:40px;
+		}
+		.side{
+			width:50%;
+			height:20px;
+			float:left;
+		}
+		main{
+			margin:0;
+			padding:0;
+			width: 100%;
+			height:85vh;
+		}
+		.button{
+			float:left;
+		}
+		.block{
+			width: 47.5%;
+			height: 80vh;
+			margin: 0vh 1% 0vh 1%;
+			display:block;
+			float:left;
+			border-style:solid;
+			border-width:2vh 2% 2vh 2%;
+			border-color:#775500;
+		}
+		.fix{
+			padding:0;
+			overflow: hidden;
+			height:inherit;
+		}
+
+	</style>
+	<script type="text/javascript" src="./40247008S.js"></script>
+	<script type="text/javascript" src="./dragscroll.js"></script>
+	<script type="text/javascript" src="./complex_array.js"></script>
+	<script type="text/javascript" src="./fft.js"></script>
+	<script type="text/javascript" src="./fft_image.js"></script>
+</head>
+<body>
+	<nav>
+		<div class="side">
+			<form enctype="multipart/form-data" method="post" name="form" style="float:left;">
+		    	<input type="file" id="upload" class="button" name="upload" onchange="handleFiles(this.files);">
+		    </form>
+		    <div style="float:left;display:inline;" >
+		    	<span id="text" style="display:inline;"></span>
+		    </div>
+		</div>
+		<div class="side">
+	    	<button type="button" id="HW1" name="HW1" class="button" onclick="Draw()"style="margin-left:2%;">HW1</button>
+	    	<button type="button" id="HW2" name="HW2" class="button" onclick="Histogram()"style="margin-left:2%;">HW2</button>
+	    	<button type="button" id="HW3" name="HW3" class="button" onclick="Noise()"style="margin-left:2%;">HW3</button>
+	    	<button type="button" id="HW4" name="HW4" class="button" onclick="ColorConvert()" style="margin-left:2%;">HW4</button>
+	    	<button type="button" id="HW5" name="HW5" class="button" onclick="FourierImage()" style="margin-left:2%;">HW5</button>
+	    	<button type="button" id="HW6" name="HW6" class="button" onclick="ColorPicker()" style="margin-left:2%;">HW6</button>
+	    	<button type="button" id="HW7" name="HW7" class="button" onclick="HistEqual()" style="margin-left:2%;">HW7</button>
+	    	<button type="button" id="HW8-1" name="HW8-1" class="button" onclick="Smooth()" style="margin-left:2%;">HW8-1</button>
+	    	<button type="button" id="HW8-2" name="HW8-2" class="button" onclick="Edge()" style="margin-left:2%;">HW8-2</button>
+	    	<button type="button" id="sharpen" name="sharpen" class="button" onclick="Sharpen()" style="margin-left:2%;">sharpen</button>
+	    	<button type="button" id="project" name="project" class="button" onclick="Project()" style="margin-left:2%;">project</button>
+	    	<button type="button" id="save" name="save" onclick="Save()" style="float:right">保存</button>
+	    </div>
+	</nav>
+	<main>
+		<div class="block"><div id="left" class="fix dragscroll"><p></p></div></div>
+		<div class="block"><div id="right" class="fix dragscroll"><p></p></div></div>
+	</main>
+</body>
+<script>
+	//區域定義
+	var upload = document.getElementById("upload");
+	var right = document.getElementById("right");
+	var left = document.getElementById("left");
+	var text = document.getElementById("text");
+
+	//檔案讀取
+	function handleFiles(files) 
+	{
+	    var re = /\.(jpg|gif|png|ppm|bmp|jpeg)$/i;
+	    var ppm = /\.(ppm)$/i;
+	    if(!re.test(upload.value))
+	    {
+	    	alert("不支援的檔案格式！")
+	    }
+	    else if(ppm.test(upload.value))
+	    {
+	    	var canvas = document.createElement("canvas");
+	    	var ctx = canvas.getContext("2d");
+	    	left.removeChild(left.lastChild);
+		    left.appendChild(canvas);
+	    	var file = files[0];
+
+	    	var readNum = new FileReader();
+	        readNum.onload = function(e) 
+	        { 
+	            var contents = e.target.result;
+	            contents = contents.replace(/^\s+/, '').replace(/\s+$/, '');
+	            var data = contents.split(/\s+/);
+
+	            var width = data[1];
+	            var height = data[2];
+	            var maxColors = data[3];
+	            var img = ctx.getImageData(0, 0, width, height);
+	            data = data.slice(4).join(" ").toString();
+
+	            var buffer = new ArrayBuffer(3 * width * height);
+	            var pixels = new Uint8Array(buffer);
+				for(var i=0;i<data.length;i++)
+					pixels[i] = data.charCodeAt(i);
+				
+	            if (pixels.length != 3 * width * height) 
+	            {
+	                document.write('Not enough pixel data.<br>'
+	                          + 'Found: ' + (pixels.length) + '<br>'
+	                          + 'Expecting: ' + (3 * width * height) + '<br>'
+	                          + 'Based on width = ' + width 
+	                          + ' and height = ' + height);
+	                return;
+	            }
+	            
+	            var imagaArray = img.data;
+				var imageIndex = 0;
+				for(var i=0;i<pixels.length;i+=3)
+				{
+					imagaArray[imageIndex++] = pixels[i];
+					imagaArray[imageIndex++] = pixels[i+1];
+					imagaArray[imageIndex++] = pixels[i+2];
+					imagaArray[imageIndex++] = 255;
+				}
+				canvas.width = width; 
+	            canvas.height = height; 
+	        	ctx.putImageData(img, 0, 0);
+	        	Text(file,canvas.width,canvas.height);
+	        	left.lastChild.classList.add("obj");
+	        } 
+	        readNum.readAsBinaryString(file,"binary");
+	    }
+	    else
+	    {
+			var reader = new FileReader();
+			reader.onload = function ( event ) 
+			{
+	            var file = event.target.result;
+	            var img = new Image();
+	            img.src = file;
+	            img.file = files[0];
+		    	img.onload = function()
+		    	{
+		    		left.removeChild(left.lastChild);
+		    		left.appendChild(img);
+					Text(files[0],img.width,img.height);
+					left.lastChild.classList.add("obj");
+		    	};	
+	        };
+	        reader.readAsDataURL(files[0]);
+	    }
+	}
+
+	/*輸入檔案之詳細資訊*/
+	function Text(file,width,height)
+	{
+		text.innerHTML = "";
+		text.innerHTML += "檔案格式：&nbsp;" + file.name.substr(file.name.lastIndexOf('.')+1, file.name.length) + "&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;";
+		text.innerHTML += "大小：&nbsp;" + file.size + " bytes" + "\&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;";
+		text.innerHTML += "尺寸：&nbsp;" + width +"&nbsp; x &nbsp;" + height + "&nbsp; px &nbsp;&nbsp;&nbsp;";
+	}
+
+	/*保存圖片*/
+	function Save()
+	{
+		var canvas = right.lastChild;
+	    var MIME_TYPE = "data:image/png;";
+	    var imgURL = canvas.toDataURL(MIME_TYPE);
+
+	    var dlLink = document.createElement('a');
+	    dlLink.download = "image.png";
+	    dlLink.href = imgURL;
+	    dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(':');
+
+	    document.body.appendChild(dlLink);
+	    dlLink.click();
+	    document.body.removeChild(dlLink);
+	}
+</script>
+</html>
